@@ -23,5 +23,15 @@ Once registered, the camera should appear in:
 
 The PC receiver is a C++ project managed by CMake.
 
-1. Open the `windows` folder in Visual Studio or your favorite C++ IDE.
-2. Build the `PhoneWebcamReceiver` target.
+### Using Command Line (PowerShell)
+
+```powershell
+# Define path to CMake (usually bundled with Visual Studio)
+$cmake = 'C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
+
+cd windows
+& $cmake -B build
+& $cmake --build build --config Release
+```
+
+The executable will be located at `windows/build/Release/PhoneWebcamReceiver.exe`.

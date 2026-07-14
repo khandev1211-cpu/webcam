@@ -74,8 +74,7 @@ set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
 
 :fail
-rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
-rem the _shell_ return code (useful for some editors).
-if %EXIT_CODE% equ 0 set EXIT_CODE=%ERRORLEVEL%
+set EXIT_CODE=%ERRORLEVEL%
+if %EXIT_CODE% equ 0 set EXIT_CODE=1
 if "%GRADLE_EXIT_CONSOLE%"=="1" exit /b %EXIT_CODE%
-exit %EXIT_CODE%
+exit /b %EXIT_CODE%

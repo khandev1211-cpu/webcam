@@ -23,4 +23,12 @@ No code yet — this covers what the environment will need once implementation s
 
 ## Build
 
-To be filled in once the Gradle project exists.
+To build and install the app on a connected device from the command line:
+
+```powershell
+# Set JAVA_HOME to JDK 17
+$env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot'
+
+cd android
+.\gradlew.bat installDebug
+```

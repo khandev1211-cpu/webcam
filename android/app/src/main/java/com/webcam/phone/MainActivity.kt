@@ -28,8 +28,8 @@ class MainActivity : AppCompatActivity() {
         controlServer = ControlServer(8080)
         controlServer?.start()
 
-        // For now, start streaming to localhost (USB mode default)
-        udpStreamer = UdpStreamer("127.0.0.1", 5005)
+        // For now, start streaming to the PC's IP (Auto-detected or hardcoded for test)
+        udpStreamer = UdpStreamer("10.40.4.5", 5005)
         udpStreamer?.start()
 
         videoEncoder = VideoEncoder(1280, 720, 2000000, 30) { data, info ->
