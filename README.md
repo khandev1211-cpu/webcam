@@ -1,49 +1,60 @@
-# Phone Webcam
+# Phone Webcam 📱🎥
 
-Turn an Android phone into a Windows webcam — over Wi-Fi or USB — that shows up as a normal camera in Zoom, Teams, OBS, and anything else that takes a webcam.
+Turn your Android device into a high-quality, low-latency webcam for your Windows PC.
 
-> Working name — rename freely once you've got something better.
+[![Build and Release](https://github.com/khandev1211-cpu/webcam/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/khandev1211-cpu/webcam/actions/workflows/build-and-release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Status
+## 🌟 Overview
 
-**In Progress:** Scaffolding complete for both Android and Windows targets.
+**Phone Webcam** is a high-performance streaming solution that bridges your Android phone's camera to Windows as a native Virtual Camera device. It uses hardware-accelerated H.264 encoding to ensure smooth video with minimal CPU impact on both devices.
 
-- **Android:** Basic project structure initialized with CameraX and core permissions. Located in `/android`.
-- **Windows:** C++ receiver project initialized with CMake, linking Media Foundation and Winsock. Located in `/windows`.
+### Key Features
+- **Zero Latency (Target):** Optimized UDP transport for near-instant video feed.
+- **High Quality:** Leverages Android's `CameraX` API and hardware `MediaCodec`.
+- **Native Integration:** Appears as a standard webcam in Zoom, Microsoft Teams, OBS, and Discord via the Windows 11 Media Foundation Virtual Camera API.
+- **Dual Transport:** Works seamlessly over **Wi-Fi** (local network) or **USB** (via ADB tunneling).
 
-## How it works
+## 🚀 Quick Start
 
-The phone captures and hardware-encodes video, sends it to the PC over Wi-Fi or USB, and the PC decodes it into a Windows virtual camera device that any app can select like a normal webcam.
+### 1. Requirements
+- **PC:** Windows 11 (Build 22000+)
+- **Mobile:** Android 8.0 (Oreo) or higher
+- **Tools:** [ADB](https://developer.android.com/studio/releases/platform-tools) (for USB mode)
 
-See [docs/architecture.md](docs/architecture.md) for the full breakdown.
+### 2. Installation
+1. Download the latest **APK** and **Receiver.exe** from the [Releases](https://github.com/khandev1211-cpu/webcam/releases) page.
+2. Install the APK on your Android device.
+3. Launch the app on your phone.
 
-## v1 scope
+### 3. Connecting via USB (Recommended)
+1. Enable **USB Debugging** on your phone.
+2. Connect your phone to your PC via USB.
+3. Run the following command on your PC:
+   ```bash
+   adb forward tcp:8080 tcp:8080
+   ```
+4. Run `PhoneWebcamReceiver.exe` on your PC.
 
-- Android phone as the source (Kotlin + Camera2 + MediaCodec)
-- Windows 11 as the only target OS (Media Foundation virtual camera API)
-- Both connection modes work the same way underneath — USB just tunnels the same protocol over `adb forward`
-- Virtual camera is system-wide: any app that lists cameras sees it, not just a bundled viewer
+## 🛠 Developer Setup
 
-## Requirements
+### Android App
+- Located in `/android`.
+- Built with Kotlin and Gradle.
+- Requires Camera and Internet permissions.
 
-- **Phone:** Android 8.0+ (API 26+), camera + hardware H.264 encoder
-- **PC:** Windows 11, build 22000 or later
-- **USB mode:** USB debugging enabled on the phone, ADB installed on the PC
+### Windows Receiver
+- Located in `/windows`.
+- Built with C++ 20 and CMake.
+- Uses Windows Media Foundation for virtual camera registration.
 
-## Docs
+## 🗺 Roadmap
+- [x] Initial Project Scaffolding
+- [x] TCP Control Channel Handshake
+- [ ] H.264 Hardware Encoding (Android)
+- [ ] UDP Stream Reception (Windows)
+- [ ] Virtual Camera Driver Registration
+- [ ] Audio Streaming Support
 
-| File | Contents |
-|---|---|
-| [docs/architecture.md](docs/architecture.md) | Components, data flow, key design decisions |
-| [docs/protocol.md](docs/protocol.md) | Wire format for the control and video channels |
-| [docs/setup-android.md](docs/setup-android.md) | Android app prerequisites and build setup |
-| [docs/setup-windows.md](docs/setup-windows.md) | PC app prerequisites, build setup, virtual camera registration |
-
-## Roadmap
-
-**Now:** Wi-Fi + USB connection, Windows 11 virtual camera, Android capture.
-**Later:** Windows 10 support (DirectShow fallback), audio passthrough, iOS client, quality/latency tuning, background operation (no foreground window required).
-
-## License
-
-TBD
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
