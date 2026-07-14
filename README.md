@@ -6,7 +6,10 @@ Turn an Android phone into a Windows webcam — over Wi-Fi or USB — that shows
 
 ## Status
 
-Early planning / scaffolding. No application code yet — this repo currently holds the architecture and specs that implementation will follow.
+**In Progress:** Scaffolding complete for both Android and Windows targets.
+
+- **Android:** Basic project structure initialized with CameraX and core permissions. Located in `/android`.
+- **Windows:** C++ receiver project initialized with CMake, linking Media Foundation and Winsock. Located in `/windows`.
 
 ## How it works
 

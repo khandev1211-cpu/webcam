@@ -5,7 +5,8 @@ No code yet — this covers what the environment will need once implementation s
 ## Prerequisites
 
 - Windows 11, build 22000 or later (required for the Media Foundation virtual camera API)
-- Visual Studio 2022 with the "Desktop development with C++" workload, or a Rust toolchain if that's the final choice
+- Visual Studio 2022 with the "Desktop development with C++" workload
+- CMake 3.20 or later
 - Windows SDK version matching build 22000+ (needed for `mfvirtualcamera.h`)
 
 ## Virtual camera registration
@@ -20,4 +21,7 @@ Once registered, the camera should appear in:
 
 ## Build
 
-To be filled in once the project exists (CMake vs. Visual Studio project — not yet decided).
+The PC receiver is a C++ project managed by CMake.
+
+1. Open the `windows` folder in Visual Studio or your favorite C++ IDE.
+2. Build the `PhoneWebcamReceiver` target.

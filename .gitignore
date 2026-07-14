@@ -1,1 +1,34 @@
-.idea 
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Build outputs
+build/
+bin/
+obj/
+out/
+debug/
+release/
+x64/
+x86/
+
+# Windows / CMake
+CMakeSettings.json
+CMakeUserPresets.json
+CMakeFiles/
+CMakeCache.txt
+*.sln
+*.vcxproj
+*.user
+
+# Android
+.gradle/
+local.properties
+*.apk
+*.aar
+*.jks
+
+# OS files
+.DS_Store
+Thumbs.db
