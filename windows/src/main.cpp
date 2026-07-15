@@ -116,10 +116,20 @@ public:
                 out.pSample = pOutSample;
 
                 DWORD status;
-                if (pDecoder->ProcessOutput(0, 1, &out, &status) == S_OK) {
+                HRESULT hr = pDecoder->ProcessOutput(0, 1, &out, &status);
+                if (hr == S_OK) {
                     g_framesDecoded++;
                     render(out.pSample);
                     out.pSample->Release();
+                } else if (hr == MF_E_TRANSFORM_STREAM_CHANGE) {
+                    IMFMediaType* pNewOut = nullptr;
+                    pDecoder->GetOutputAvailableType(dwOut, 0, &pNewOut);
+                    pDecoder->SetOutputType(dwOut, pNewOut, 0);
+                    pDecoder->GetOutputStreamInfo(dwOut, &outInfo);
+                    pNewOut->Release();
+                    out.pSample->Release();
+                    pOutBufAlloc->Release();
+                    continue;
                 } else {
                     out.pSample->Release();
                     pOutBufAlloc->Release();

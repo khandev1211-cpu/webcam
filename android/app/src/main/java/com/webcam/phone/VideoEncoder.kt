@@ -72,7 +72,11 @@ class VideoEncoder(
                         
                         frameCount++
                         if (frameCount % 100 == 0) {
-                            Log.d("VideoEncoder", "Encoded $frameCount frames")
+                            val firstBytes = StringBuilder()
+                            for (i in 0 until minOf(bufferInfo.size, 10)) {
+                                firstBytes.append(String.format("%02X ", encodedData.get(bufferInfo.offset + i)))
+                            }
+                            Log.d("VideoEncoder", "Encoded $frameCount frames. Latest size: ${bufferInfo.size}, First bytes: $firstBytes")
                         }
                     }
                 } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
