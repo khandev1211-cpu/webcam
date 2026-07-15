@@ -10,12 +10,13 @@ import java.nio.ByteOrder
 class UdpStreamer(private val address: String, private val port: Int) {
     private var socket: DatagramSocket? = null
     private var sequenceNumber = 0L
-    private val MTU = 1300 // Safe MTU for UDP to avoid fragmentation
+    private var packetCount = 0L
+    private val MTU = 1300 
 
     fun start() {
         try {
             socket = DatagramSocket()
-            Log.d("UdpStreamer", "Streaming to $address:$port")
+            Log.d("UdpStreamer", "Streaming socket opened, target: $address:$port")
         } catch (e: Exception) {
             Log.e("UdpStreamer", "Failed to start UDP socket", e)
         }
@@ -25,16 +26,19 @@ class UdpStreamer(private val address: String, private val port: Int) {
         val bytes = ByteArray(data.remaining())
         data.get(bytes)
 
-        // Fragment data if larger than MTU
         var offset = 0
         while (offset < bytes.size) {
             val chunkSize = minOf(bytes.size - offset, MTU)
+            val isEndOfFrame = (offset + chunkSize) >= bytes.size
             
-            // Header: Seq(4) + Timestamp(8) + Flags(1) = 13 bytes
+            var flags = 0
+            if (isKeyframe) flags = flags or 0x01
+            if (isEndOfFrame) flags = flags or 0x02
+
             val packetData = ByteBuffer.allocate(13 + chunkSize).order(ByteOrder.BIG_ENDIAN)
             packetData.putInt(sequenceNumber.toInt())
             packetData.putLong(timestamp)
-            packetData.put(if (isKeyframe) 1.toByte() else 0.toByte())
+            packetData.put(flags.toByte())
             packetData.put(bytes, offset, chunkSize)
 
             try {
@@ -45,8 +49,12 @@ class UdpStreamer(private val address: String, private val port: Int) {
                     port
                 )
                 socket?.send(packet)
+                packetCount++
+                if (packetCount % 500 == 0L) {
+                    Log.d("UdpStreamer", "Sent $packetCount packets to $address")
+                }
             } catch (e: Exception) {
-                Log.e("UdpStreamer", "Send failed", e)
+                Log.e("UdpStreamer", "Send failed to $address", e)
             }
 
             offset += chunkSize

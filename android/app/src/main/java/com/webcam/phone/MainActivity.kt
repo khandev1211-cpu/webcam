@@ -19,6 +19,7 @@ class MainActivity : AppCompatActivity() {
     private var videoEncoder: VideoEncoder? = null
     private var udpStreamer: UdpStreamer? = null
     private lateinit var viewFinder: PreviewView
+    private var lensFacing = CameraSelector.LENS_FACING_BACK
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,83 +27,67 @@ class MainActivity : AppCompatActivity() {
         viewFinder = findViewById(R.id.viewFinder)
 
         controlServer = ControlServer(8080)
-        controlServer?.start()
-
-        // For now, start streaming to the PC's IP (Auto-detected or hardcoded for test)
-        udpStreamer = UdpStreamer("10.40.4.5", 5005)
-        udpStreamer?.start()
-
-        videoEncoder = VideoEncoder(1280, 720, 2000000, 30) { data, info ->
-            val isKeyframe = (info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
-            udpStreamer?.sendFrame(data, info.presentationTimeUs, isKeyframe)
+        controlServer?.onClientConnected = { pcIp ->
+            runOnUiThread {
+                startStreaming(pcIp)
+            }
         }
+        controlServer?.onSwitchCamera = {
+            runOnUiThread {
+                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+                startCamera()
+            }
+        }
+        controlServer?.start()
 
         if (allPermissionsGranted()) {
             startCamera()
         } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, 10)
         }
+    }
+
+    private fun startStreaming(pcIp: String) {
+        udpStreamer?.stop()
+        videoEncoder?.stop()
+
+        udpStreamer = UdpStreamer(pcIp, 5005)
+        udpStreamer?.start()
+
+        videoEncoder = VideoEncoder(640, 480, 1500000, 30) { data, info ->
+            val isKeyframe = (info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
+            udpStreamer?.sendFrame(data, info.presentationTimeUs, isKeyframe)
+        }
+        videoEncoder?.start()
+        startCamera() // Re-bind camera to new encoder surface
     }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
         cameraProviderFuture.addListener({
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(viewFinder.surfaceProvider)
-                }
-
-            videoEncoder?.start()
-
-            val recorder = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider { request ->
-                        val surface = videoEncoder?.inputSurface
-                        if (surface != null) {
-                            request.provideSurface(surface, ContextCompat.getMainExecutor(this)) {
-                                // Surface result
-                            }
-                        }
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build().also { it.setSurfaceProvider(viewFinder.surfaceProvider) }
+            
+            val recorder = Preview.Builder().build().also {
+                it.setSurfaceProvider { request ->
+                    videoEncoder?.inputSurface?.let { surface ->
+                        request.provideSurface(surface, ContextCompat.getMainExecutor(this)) {}
                     }
                 }
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, recorder
-                )
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Use case binding failed", e)
             }
 
+            val selector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, selector, preview, recorder)
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Binding failed", e)
+            }
         }, ContextCompat.getMainExecutor(this))
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted()) {
-                startCamera()
-            } else {
-                Toast.makeText(this, "Permissions not granted.", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-        }
     }
 
     override fun onDestroy() {
@@ -113,7 +98,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }

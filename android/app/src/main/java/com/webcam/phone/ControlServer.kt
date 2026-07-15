@@ -12,6 +12,8 @@ import kotlin.concurrent.thread
 class ControlServer(private val port: Int) {
     private var serverSocket: ServerSocket? = null
     private var isRunning = false
+    var onClientConnected: ((String) -> Unit)? = null
+    var onSwitchCamera: (() -> Unit)? = null
 
     fun start() {
         if (isRunning) return
@@ -23,6 +25,9 @@ class ControlServer(private val port: Int) {
                 while (isRunning) {
                     val client = serverSocket?.accept()
                     if (client != null) {
+                        val clientIp = client.inetAddress.hostAddress
+                        Log.d("ControlServer", "PC Connected from: $clientIp")
+                        onClientConnected?.invoke(clientIp)
                         handleClient(client)
                     }
                 }
@@ -36,24 +41,28 @@ class ControlServer(private val port: Int) {
         thread {
             try {
                 val output = DataOutputStream(socket.getOutputStream())
+                val input = socket.getInputStream()
                 
-                // Send "hello" message as per protocol
                 val helloMsg = JSONObject().apply {
                     put("type", "hello")
                     put("deviceName", android.os.Build.MODEL)
-                    put("resolutions", listOf("1280x720", "1920x1080")) // Placeholder
                 }
-                
                 sendJson(output, helloMsg)
                 
-                // Keep connection open and listen for commands
-                val input = socket.getInputStream()
+                val lengthBuffer = ByteArray(4)
                 while (isRunning && !socket.isClosed) {
-                    // Logic to read length-prefixed JSON from PC
-                    // (To be implemented)
-                    Thread.sleep(1000)
+                    val read = input.read(lengthBuffer)
+                    if (read == 4) {
+                        val length = ByteBuffer.wrap(lengthBuffer).order(ByteOrder.BIG_ENDIAN).int
+                        val payloadBytes = ByteArray(length)
+                        input.read(payloadBytes)
+                        val json = JSONObject(String(payloadBytes))
+                        
+                        if (json.getString("type") == "switch_camera") {
+                            onSwitchCamera?.invoke()
+                        }
+                    }
                 }
-                
             } catch (e: Exception) {
                 Log.e("ControlServer", "Client error", e)
             } finally {
