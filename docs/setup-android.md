@@ -12,8 +12,9 @@ No code yet — this covers what the environment will need once implementation s
 
 - `CAMERA`
 - `INTERNET`
-- `ACCESS_NETWORK_STATE` (to detect and prefer Wi-Fi vs. mobile data)
-- `FOREGROUND_SERVICE` (streaming needs to survive the screen turning off / app backgrounding)
+- `ACCESS_NETWORK_STATE`
+- `ACCESS_WIFI_STATE`
+- `FOREGROUND_SERVICE`
 
 ## USB mode setup (developer, not end-user, for now)
 

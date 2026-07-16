@@ -6,23 +6,40 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.LinkedBlockingQueue
 
 class UdpStreamer(private val address: String, private val port: Int) {
     private var socket: DatagramSocket? = null
     private var sequenceNumber = 0L
-    private var packetCount = 0L
-    private val MTU = 1300 
+    private val MTU = 1300
+    private var isRunning = false
+    private val packetQueue = LinkedBlockingQueue<ByteArray>(2000)
+    private var worker: Thread? = null
 
     fun start() {
+        if (isRunning) return
         try {
             socket = DatagramSocket()
-            Log.d("UdpStreamer", "Streaming socket opened, target: $address:$port")
-        } catch (e: Exception) {
-            Log.e("UdpStreamer", "Failed to start UDP socket", e)
-        }
+            socket?.sendBufferSize = 1024 * 1024
+            isRunning = true
+            worker = Thread {
+                val inetAddress = InetAddress.getByName(address)
+                while (isRunning) {
+                    try {
+                        val data = packetQueue.take()
+                        val packet = DatagramPacket(data, data.size, inetAddress, port)
+                        socket?.send(packet)
+                    } catch (e: Exception) { }
+                }
+            }
+            worker?.priority = Thread.MAX_PRIORITY
+            worker?.start()
+            Log.d("UdpStreamer", "UDP Engine Started")
+        } catch (e: Exception) { Log.e("UdpStreamer", "Start failed", e) }
     }
 
     fun sendFrame(data: ByteBuffer, timestamp: Long, isKeyframe: Boolean) {
+        if (!isRunning) return
         val bytes = ByteArray(data.remaining())
         data.get(bytes)
 
@@ -41,29 +58,19 @@ class UdpStreamer(private val address: String, private val port: Int) {
             packetData.put(flags.toByte())
             packetData.put(bytes, offset, chunkSize)
 
-            try {
-                val packet = DatagramPacket(
-                    packetData.array(),
-                    packetData.capacity(),
-                    InetAddress.getByName(address),
-                    port
-                )
-                socket?.send(packet)
-                packetCount++
-                if (packetCount % 500 == 0L) {
-                    Log.d("UdpStreamer", "Sent $packetCount packets to $address")
-                }
-            } catch (e: Exception) {
-                Log.e("UdpStreamer", "Send failed to $address", e)
+            if (!packetQueue.offer(packetData.array())) {
+                packetQueue.clear() // Drop if network is too slow to stay real-time
             }
-
             offset += chunkSize
             sequenceNumber++
         }
     }
 
     fun stop() {
+        isRunning = false
+        worker?.interrupt()
         socket?.close()
         socket = null
+        packetQueue.clear()
     }
 }

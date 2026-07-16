@@ -5,7 +5,7 @@ import android.content.pm.PackageManager
 import android.media.MediaCodec
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -13,22 +13,30 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
     private var controlServer: ControlServer? = null
     private var videoEncoder: VideoEncoder? = null
     private var udpStreamer: UdpStreamer? = null
     private lateinit var viewFinder: PreviewView
+    private lateinit var ipText: TextView
+    private lateinit var statusText: TextView
     private var lensFacing = CameraSelector.LENS_FACING_BACK
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         viewFinder = findViewById(R.id.viewFinder)
+        ipText = findViewById(R.id.ipAddressText)
+        statusText = findViewById(R.id.statusText)
+
+        displayIpAddress()
 
         controlServer = ControlServer(8080)
         controlServer?.onClientConnected = { pcIp ->
             runOnUiThread {
+                statusText.text = "Status: Connected to $pcIp"
                 startStreaming(pcIp)
             }
         }
@@ -47,11 +55,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startStreaming(pcIp: String) {
-        udpStreamer?.stop()
-        videoEncoder?.stop()
+    private fun displayIpAddress() {
+        thread {
+            try {
+                val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+                var foundIp = "Not found"
+                while (interfaces.hasMoreElements()) {
+                    val iface = interfaces.nextElement()
+                    if (iface.isLoopback || !iface.isUp) continue
+                    val addresses = iface.inetAddresses
+                    while (addresses.hasMoreElements()) {
+                        val addr = addresses.nextElement()
+                        if (addr is java.net.Inet4Address) {
+                            foundIp = addr.hostAddress
+                            break
+                        }
+                    }
+                }
+                runOnUiThread {
+                    ipText.text = "IP: $foundIp"
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    ipText.text = "IP: Error"
+                }
+            }
+        }
+    }
 
-        udpStreamer = UdpStreamer(pcIp, 5005)
+    private fun startStreaming(pcIp: String) {
+        videoEncoder?.stop()
+        udpStreamer?.stop()
+
+        udpStreamer = UdpStreamer(pcIp, 6000) // Changed to 6000
         udpStreamer?.start()
 
         videoEncoder = VideoEncoder(640, 480, 1500000, 30) { data, info ->
@@ -59,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             udpStreamer?.sendFrame(data, info.presentationTimeUs, isKeyframe)
         }
         videoEncoder?.start()
-        startCamera() // Re-bind camera to new encoder surface
+        startCamera()
     }
 
     private fun startCamera() {
@@ -67,7 +103,6 @@ class MainActivity : AppCompatActivity() {
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
             val preview = Preview.Builder().build().also { it.setSurfaceProvider(viewFinder.surfaceProvider) }
-            
             val recorder = Preview.Builder().build().also {
                 it.setSurfaceProvider { request ->
                     videoEncoder?.inputSurface?.let { surface ->
@@ -75,7 +110,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-
             val selector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
             try {
                 cameraProvider.unbindAll()
